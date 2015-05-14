@@ -1,6 +1,7 @@
 package rrddb
 
 import (
+	"os"
 	"testing"
 	"time"
 )
@@ -15,11 +16,10 @@ func TestAll(t *testing.T) {
 	var rd *Rrddb
 	var err error
 
-	if rd, err = Open(arname, dbname); err != nil {
-		t.Fatal(err)
-	}
+	defer os.Remove(arname)
+	defer os.Remove(dbname)
 
-	if err = rd.Close(); err != nil {
+	if rd, err = Open(arname, dbname); err != nil {
 		t.Fatal(err)
 	}
 
@@ -33,6 +33,11 @@ func TestAll(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	if err = rd.Close(); err != nil {
+		t.Fatal(err)
+	}
+
 	/*
 
 		// Update
