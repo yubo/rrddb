@@ -175,15 +175,15 @@ extern    "C" {
 	int       rrd_create_r( const char *filename, unsigned long pdp_step, 
 			time_t last_up, int argc, const char **argv, struct rrddb_t *r, 
 			int overwrite); 
-	rrd_info_t *rrd_info_r(char *, int *, struct rrddb_t *);
+	rrd_info_t *rrd_info_r(char *, int *, struct rrddb_t *, off_t r_offset, ssize_t r_size);
 	/* NOTE: rrd_update_r are only thread-safe if no at-style time
 	   specifications get used!!! */
 
 	int       rrd_update_r( const char *filename, const char *_template,
-			int argc, const char **argv, struct rrddb_t *r);
+			int argc, const char **argv, struct rrddb_t *r, off_t r_offset, ssize_t r_size);
 	int rrd_fetch_r ( const char *filename, const char *cf, time_t *start,
 			time_t *end, unsigned long *step, unsigned long *ds_cnt, 
-			char ***ds_namv, rrd_value_t **data, struct rrddb_t *r);
+			char ***ds_namv, rrd_value_t **data, struct rrddb_t *r, off_t r_offset, ssize_t r_size);
 	int       rrd_dump_r( const char *filename, char *outname);
 	time_t    rrd_last_r (const char *filename);
 	int rrd_lastupdate_r (const char *filename, time_t *ret_last_update, 
@@ -269,7 +269,8 @@ extern    "C" {
 	void     rrd_free( rrd_t *rrd) RRD_DEPRECATED;
 	void      rrd_init( rrd_t *rrd) RRD_DEPRECATED;
 
-	rrd_file_t *rrd_open( const char *const file_name, rrd_t *rrd, unsigned rdwr, int *ret_p, rrddb_t *r) RRD_DEPRECATED;
+	rrd_file_t *rrd_open( const char *const file_name, rrd_t *rrd, unsigned rdwr, 
+			int *ret_p, rrddb_t *r, off_t r_offset, ssize_t r_size) RRD_DEPRECATED;
 
 	void      rrd_dontneed( rrd_file_t *rrd_file, rrd_t *rrd) RRD_DEPRECATED;
 	int       rrd_close( rrd_file_t *rrd_file) RRD_DEPRECATED;

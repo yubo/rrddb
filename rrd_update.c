@@ -65,9 +65,9 @@ static int gettimeofday( struct timeval *t, struct __timezone *tz) {
 /* FUNCTION PROTOTYPES */
 
 int       rrd_update_r( const char *filename, const char *tmplt,
-		int argc, const char **argv, rrddb_t *r);
+		int argc, const char **argv, rrddb_t *r, off_t r_offset, ssize_t r_size);
 int       _rrd_update( const char *filename, const char *tmplt,
-		int argc, const char **argv, rrd_info_t *, rrddb_t *r);
+		int argc, const char **argv, rrd_info_t *, rrddb_t *r, off_t r_offset, ssize_t r_size);
 
 static int allocate_data_structures( rrd_t *rrd, char ***updvals,
 		rrd_value_t **pdp_temp, const char *tmplt, long **tmpl_idx,
@@ -219,12 +219,13 @@ static void initialize_time( time_t *current_time, unsigned long *current_time_u
 #define IFDNAN(X,Y) (isnan(X) ? (Y) : (X));
 
 int rrd_update_r( const char *filename, const char *tmplt, int argc,
-		const char **argv, rrddb_t *r) {
-	return _rrd_update(filename, tmplt, argc, argv, NULL, r);
+		const char **argv, rrddb_t *r, off_t r_offset, ssize_t r_size) {
+	return _rrd_update(filename, tmplt, argc, argv, NULL, r, r_offset, r_size);
 }
 
-int _rrd_update( const char *filename, const char *tmplt,
-		int argc, const char **argv, rrd_info_t * pcdp_summary, rrddb_t *r) {
+int _rrd_update( const char *filename, const char *tmplt, int argc, 
+		const char **argv, rrd_info_t * pcdp_summary, rrddb_t *r, 
+		off_t r_offset, ssize_t r_size) {
 
 	int       arg_i = 2;
 
@@ -261,7 +262,7 @@ int _rrd_update( const char *filename, const char *tmplt,
 	}
 
 	rrd_init(&rrd);
-	if ((rrd_file = rrd_open(filename, &rrd, RRD_READWRITE, &ret, r)) == NULL) {
+	if ((rrd_file = rrd_open(filename, &rrd, RRD_READWRITE, &ret, r, r_offset, r_size)) == NULL) {
 		goto err_free;
 	}
 	/* We are now at the beginning of the rra's */

@@ -219,23 +219,24 @@ const char *rrdCreate(const char *filename, unsigned long step,
 }
 
 const char *rrdUpdate(const char *filename, const char *template, 
-		int argc, const char **argv, void *rd) {
+		int argc, const char **argv, void *rd, off_t r_offset, ssize_t r_size) {
 	int ret;
-	ret = rrd_update_r(filename, template, argc, argv, (rrddb_t *)rd);
+	ret = rrd_update_r(filename, template, argc, argv, (rrddb_t *)rd, r_offset, r_size);
 	return rrd_strerror(ret);
 }
 
 
-const char *rrdInfo(rrd_info_t **info, char *filename, void *rd) {
+const char *rrdInfo(rrd_info_t **info, char *filename, 
+		void *rd, off_t r_offset, ssize_t r_size) {
 	int ret = 0;
-	*info = rrd_info_r(filename, &ret, (rrddb_t *)rd);
+	*info = rrd_info_r(filename, &ret, (rrddb_t *)rd, r_offset, r_size);
 	return rrd_strerror(ret);
 }
 
 const char *rrdFetch(int *ret, char *filename, const char *cf, time_t *start, 
 		time_t *end, unsigned long *step, unsigned long *ds_cnt, 
-		char ***ds_namv, double **data, void *rd) {
-	*ret = rrd_fetch_r(filename, cf, start, end, step, ds_cnt, ds_namv, data, (rrddb_t *)rd);
+		char ***ds_namv, double **data, void *rd, off_t r_offset, ssize_t r_size) {
+	*ret = rrd_fetch_r(filename, cf, start, end, step, ds_cnt, ds_namv, data, (rrddb_t *)rd, r_offset, r_size);
 	return rrd_strerror(*ret);
 }
 

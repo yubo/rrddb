@@ -47,11 +47,12 @@ int db_delete(void *db, const char *name, unsigned int flags);
 
 extern const char *rrdCreate(const char *filename, unsigned long step, 
 		time_t start, int argc, const char **argv, void *rd, int overwrite);
-extern const char *rrdUpdate(const char *filename, 
-		const char *template, int argc, const char **argv, void *rd);
-extern const char *rrdInfo(struct rrd_info_t **ret, char *filename, void *rd);
+extern const char *rrdUpdate(const char *filename, const char *template, 
+		int argc, const char **argv, void *rd, off_t r_offset, ssize_t r_size);
+extern const char *rrdInfo(struct rrd_info_t **ret, char *filename, void *rd,
+		off_t r_offset, ssize_t r_size);
 extern const char *rrdFetch(int *ret, char *filename, const char *cf, 
 		time_t *start, time_t *end, unsigned long *step, unsigned long *ds_cnt, 
-		char ***ds_namv, double **data, void *rd);
+		char ***ds_namv, double **data, void *rd, off_t r_offset, ssize_t r_size);
 extern char *arrayGetCString(char **values, int i);
 #endif

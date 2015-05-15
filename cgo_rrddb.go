@@ -53,41 +53,44 @@ func (d *Rrddb) close() error {
 	return fmt.Errorf("db_close error")
 }
 
-func (r *Rrddb) Get(entry *Db_entry) error {
-	_key := C.CString(entry.Key)
+func (r *Rrddb) Get(key string) (int64, int64, int64, error) {
+	var ts C.time_t
+	var offset C.off_t
+	var size C.ssize_t
+	_key := C.CString(key)
 	defer C.free(unsafe.Pointer(_key))
 
-	ret := C.db_get(r.p, _key, &entry.Ts, &entry.Offset, &entry.Size, 0)
+	ret := C.db_get(r.p, _key, &ts, &offset, &size, 0)
+	if ret == 0 {
+		return int64(ts), int64(offset), int64(size), nil
+	}
+	return 0, 0, 0, fmt.Errorf("db_get error")
+}
+
+func (r *Rrddb) Put(key string, ts, offset, size int64) error {
+	_key := C.CString(key)
+	defer C.free(unsafe.Pointer(_key))
+
+	ret := C.db_put(r.p, _key, C.time_t(ts), C.off_t(offset), C.ssize_t(size), R_NOOVERWRITE)
 	if ret == 0 {
 		return nil
 	}
-	return fmt.Errorf("db_get error")
+	return fmt.Errorf("db_put error, maybe the key still exist")
 }
 
-func (r *Rrddb) Put(entry *Db_entry) error {
-	_key := C.CString(entry.Key)
+func (r *Rrddb) Update(key string, ts, offset, size int64) error {
+	_key := C.CString(key)
 	defer C.free(unsafe.Pointer(_key))
 
-	ret := C.db_put(r.p, _key, entry.Ts, entry.Offset, entry.Size, R_NOOVERWRITE)
+	ret := C.db_put(r.p, _key, C.time_t(ts), C.off_t(offset), C.ssize_t(size), 0)
 	if ret == 0 {
 		return nil
 	}
-	return fmt.Errorf("db_put error")
+	return fmt.Errorf("db_update error")
 }
 
-func (r *Rrddb) Update(entry *Db_entry) error {
-	_key := C.CString(entry.Key)
-	defer C.free(unsafe.Pointer(_key))
-
-	ret := C.db_put(r.p, _key, entry.Ts, entry.Offset, entry.Size, 0)
-	if ret == 0 {
-		return nil
-	}
-	return fmt.Errorf("db_put error")
-}
-
-func (r *Rrddb) Delete(entry *Db_entry) error {
-	_key := C.CString(entry.Key)
+func (r *Rrddb) Delete(key string) error {
+	_key := C.CString(key)
 	defer C.free(unsafe.Pointer(_key))
 
 	ret := C.db_delete(r.p, _key, 0)
@@ -128,8 +131,13 @@ func (c *Creator) Create(overwrite int) error {
 
 // Use cstring and unsafe.Pointer to avoid alocations for C calls
 
-func (r *Rrddb) NewUpdater(filename string) *Updater {
-	return &Updater{filename: newCstring(filename), rd: r}
+func (r *Rrddb) NewUpdater(filename string, offset, size int64) *Updater {
+	return &Updater{
+		filename: newCstring(filename),
+		offset:   offset,
+		size:     size,
+		rd:       r,
+	}
 }
 
 func (u *Updater) SetTemplate(dsName ...string) {
@@ -182,16 +190,18 @@ func (u *Updater) update(args []unsafe.Pointer) error {
 		C.int(len(args)),
 		(**C.char)(unsafe.Pointer(&args[0])),
 		u.rd.p,
+		C.off_t(u.offset),
+		C.ssize_t(u.size),
 	)
 	return makeError(e)
 }
 
 // Info returns information about RRD file.
-func (r *Rrddb) Info(filename string) (map[string]interface{}, error) {
+func (r *Rrddb) Info(filename string, offset, size int64) (map[string]interface{}, error) {
 	fn := C.CString(filename)
 	defer freeCString(fn)
 	var i *C.rrd_info_t
-	err := makeError(C.rrdInfo(&i, fn, r.p))
+	err := makeError(C.rrdInfo(&i, fn, r.p, C.off_t(offset), C.ssize_t(size)))
 	if err != nil {
 		return nil, err
 	}
@@ -203,7 +213,9 @@ func (r *FetchResult) ValueAt(dsIndex, rowIndex int) float64 {
 }
 
 // Fetch retrieves data from RRD file.
-func (r *Rrddb) Fetch(filename, cf string, start, end time.Time, step time.Duration) (FetchResult, error) {
+func (r *Rrddb) Fetch(filename string, offset, size int64, cf string,
+	start, end time.Time, step time.Duration) (FetchResult, error) {
+
 	fn := C.CString(filename)
 	defer freeCString(fn)
 	cCf := C.CString(cf)
@@ -217,7 +229,8 @@ func (r *Rrddb) Fetch(filename, cf string, start, end time.Time, step time.Durat
 		cDsNames **C.char
 		cData    *C.double
 	)
-	err := makeError(C.rrdFetch(&ret, fn, cCf, &cStart, &cEnd, &cStep, &cDsCnt, &cDsNames, &cData, r.p))
+	err := makeError(C.rrdFetch(&ret, fn, cCf, &cStart, &cEnd, &cStep,
+		&cDsCnt, &cDsNames, &cData, r.p, C.off_t(offset), C.ssize_t(size)))
 	if err != nil {
 		return FetchResult{filename, cf, start, end, step, nil, 0, nil}, err
 	}

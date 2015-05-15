@@ -127,14 +127,14 @@ char const *rrd_err_text[RRD_ERR_NUM] = {
 	"unknown DS name ", /* RRD_ERR_UNKNOWN_DS_NAME1 */
 	"expected timestamp not found in data source from ??", /* RRD_ERR_STR */
 	"found extra data on update argument: ??", /* RRD_ERR_ARG11 */
-	"expected ?? data source readings (got ??) from ??", /* RRD_ERR_EXPECTED */
+	"expected ?? data source readings (got ?? ) from ??", /* RRD_ERR_EXPECTED */
 	"ds time: ??: ??", /* RRD_ERR_TIME1 */
 	"specifying time relative to the 'start' or 'end' makes no sense here: ??", /* RRD_ERR_TIME2 */
 	"strtod error: converting ?? to float: ??", /* RRD_ERR_STRTOD */
 	"illegal attempt to update using time ?? when last update time is ?? (minimum one second step)", /* RRD_ERR_TIME3 */
-	"not a simple ?? integer: '??'", /* RRD_ERR_INT */
-	"conversion of '??' to float not complete: tail '??'", /* RRD_ERR_DATA */
-	"rrd contains unknown DS type : '??'", /* RRD_ERR_UNKNOWN_DS_TYPE */
+	"not a simple ?? integer: ' ?? '", /* RRD_ERR_INT */
+	"conversion of ' ?? ' to float not complete: tail ' ?? '", /* RRD_ERR_DATA */
+	"rrd contains unknown DS type : ' ?? '", /* RRD_ERR_UNKNOWN_DS_TYPE */
 	"seek error in rrd", /* RRD_ERR_SEEK5 */
 	"writing rrd: ??", /* RRD_ERR_WRITE8 */
 	"seek rrd for live header writeback", /* RRD_ERR_SEEK6 */
@@ -156,11 +156,11 @@ char const *rrd_err_text[RRD_ERR_NUM] = {
 	"malformed trend arguments", /* RRD_ERR_ARG12 */
 	"RPN final stack size != 1", /* RRD_ERR_STACK2 */
 	"Maximum ?? RPN nodes permitted. Got ?? RPN nodes at present.", /* RRD_ERR_DATA1 */
-	"constants must be integers in the interval (??, ??)", /* RRD_ERR_DATA2 */
+	"constants must be integers in the interval ( ??, ?? )", /* RRD_ERR_DATA2 */
 	"failed allocating rpnp array", /* RRD_ERR_MALLOC17 */
-	"unknown data acquisition function '??'", /* RRD_ERR_UNKNOWN_DATA */
+	"unknown data acquisition function ' ?? '", /* RRD_ERR_UNKNOWN_DATA */
 	"update_cdp_prep error", /* RRD_ERR_UPDATE_CDP */
-	"variable '??' not found", /* RRD_ERR_UNKNOWN_DATA1 */
+	"variable ' ?? ' not found", /* RRD_ERR_UNKNOWN_DATA1 */
 };
 
 

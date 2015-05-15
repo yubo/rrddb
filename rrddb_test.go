@@ -12,35 +12,33 @@ const (
 	heartbeat = 2 * step
 	arname    = "/tmp/rrd.tar"
 	dbname    = "/tmp/rrd.db"
-	rrdname   = "test"
+	b_size    = 100000
 )
 
-func TestAll(t *testing.T) {
-	var rd *Rrddb
-	var err error
+var rd *Rrddb
+var err error
+var now int64
 
-	defer os.Remove(arname)
-	defer os.Remove(dbname)
+func init() {
+	now = time.Now().Unix()
+}
 
-	if rd, err = Open(arname, dbname); err != nil {
-		t.Fatal(err)
-	}
-
-	// Create
-	c := rd.NewCreator(rrdname, time.Now(), step)
+func add_rrd(t *testing.T, key string) {
+	c := rd.NewCreator(key, time.Now(), step)
 	c.RRA("AVERAGE", 0.5, 1, 100)
 	c.RRA("AVERAGE", 0.5, 5, 100)
-	c.DS("cnt", "COUNTER", heartbeat, 0, 100)
 	c.DS("g", "GAUGE", heartbeat, 0, 60)
 	if err = c.Create(0); err != nil {
 		t.Fatal(err)
 	}
+}
 
+func test_update(t *testing.T, key string) {
 	// Update
-	u := rd.NewUpdater(rrdname)
+	u := rd.NewUpdater(key, 0, 0)
 	for i := 0; i < 10; i++ {
-		time.Sleep(time.Second * step)
-		err := u.Update(time.Now(), i, 1.5*float64(i))
+		//time.Sleep(time.Second * step)
+		err = u.Update(now+int64(i*step), 1.5*float64(i))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -48,31 +46,37 @@ func TestAll(t *testing.T) {
 
 	// Update with cache
 	for i := 10; i < 20; i++ {
-		time.Sleep(time.Second * step)
-		u.Cache(time.Now(), i, 2*float64(i))
+		//time.Sleep(time.Second * step)
+		u.Cache(now+int64(i*step), 2*float64(i))
 	}
 	if err = u.Update(); err != nil {
 		t.Fatal(err)
 	}
+}
 
+func test_info(t *testing.T, key string) map[string]interface{} {
 	// Info
-	var inf map[string]interface{}
-	if inf, err = rd.Info(rrdname); err != nil {
+	if inf, err := rd.Info(key, 0, 0); err != nil {
 		t.Fatal(err)
+	} else {
+		for k, v := range inf {
+			fmt.Printf("%s (%T): %v\n", k, v, v)
+		}
+		return inf
 	}
-	for k, v := range inf {
-		fmt.Printf("%s (%T): %v\n", k, v, v)
-	}
+	return nil
+}
 
-	// Fetch
+func test_fetch(t *testing.T, key string, inf map[string]interface{}) {
 	var fetchRes FetchResult
+
 	end := time.Unix(int64(inf["last_update"].(uint)), 0)
 	start := end.Add(-20 * step * time.Second)
 	fmt.Printf("Fetch Params:\n")
 	fmt.Printf("Start: %s\n", start)
 	fmt.Printf("End: %s\n", end)
 	fmt.Printf("Step: %s\n", step*time.Second)
-	if fetchRes, err = rd.Fetch(rrdname, "AVERAGE", start, end, step*time.Second); err != nil {
+	if fetchRes, err = rd.Fetch(key, 0, 0, "AVERAGE", start, end, step*time.Second); err != nil {
 		t.Fatal(err)
 	}
 	defer fetchRes.FreeValues()
@@ -95,9 +99,126 @@ func TestAll(t *testing.T) {
 		fmt.Printf("\n")
 		row++
 	}
+}
 
-	if err = rd.Close(); err != nil {
+func test_db(t *testing.T) {
+	//db
+	if err := rd.Put("test1", now, 12345, 3222); err != nil {
 		t.Fatal(err)
+	}
+
+	if err := rd.Put("test1", now, 12345, 3222); err == nil {
+		t.Fatal("put can overwrite?")
+	} else {
+		fmt.Println("Put ", err)
+	}
+
+	if ts, offset, size, err := rd.Get("test1"); err != nil {
+		t.Fatal(err)
+	} else {
+		fmt.Println(ts, offset, size)
+	}
+}
+
+func test_offset(t *testing.T) {
+	for i := 20; i < 30; i++ {
+		key := fmt.Sprintf("rrd%08d", i)
+		add_rrd(t, key)
+		if ts, offset, size, err := rd.Get(key); err != nil {
+			fmt.Println(key, "not found or get error", err)
+		} else {
+			fmt.Println(ts, offset, size)
+			u := rd.NewUpdater(key, offset, size)
+			if err = u.Update(now+int64(i*step), 1.5*float64(i)); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+}
+
+func testAll(t *testing.T) {
+
+	os.Remove(arname)
+	os.Remove(dbname)
+	if rd, err = Open(arname, dbname); err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		rd.Close()
+		rd = nil
+	}()
+
+	add_rrd(t, "test")
+	test_update(t, "test")
+	inf := test_info(t, "test")
+	test_fetch(t, "test", inf)
+
+	test_db(t)
+
+}
+
+func add(b *testing.B, key string) {
+	c := rd.NewCreator(key, time.Now(), step)
+	c.RRA("AVERAGE", 0.5, 1, 100)
+	c.RRA("AVERAGE", 0.5, 5, 100)
+	c.DS("g", "GAUGE", heartbeat, 0, 60)
+	if err = c.Create(0); err != nil {
+		b.Fatal(err)
+	}
+}
+
+func update(b *testing.B, key string) {
+	if _, offset, size, err := rd.Get(key); err != nil {
+		b.Fatal(err)
+	} else {
+		u := rd.NewUpdater(key, offset, size)
+		if err := u.Update(now+step, float64(1.5)); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func BenchmarkAdd(b *testing.B) {
+	b.StopTimer()
+	os.Remove(arname)
+	os.Remove(dbname)
+	if rd != nil {
+		rd.Close()
+	}
+	if rd, err = Open(arname, dbname); err != nil {
+		b.Fatal(err)
+	}
+	b.StartTimer()
+	b.N = b_size
+	for i := 0; i < b.N; i++ {
+		add(b, fmt.Sprintf("add%d", i))
+	}
+}
+
+func BenchmarkUpdate(b *testing.B) {
+	if rd == nil {
+		b.Fatalf("rd is nil")
+	}
+	b.N = b_size
+	for i := 0; i < b.N; i++ {
+		key := fmt.Sprintf("add%d", i)
+		update(b, key)
+	}
+
+}
+
+func BenchmarkFetch(b *testing.B) {
+	if rd == nil {
+		b.Fatalf("rd is nil")
+	}
+	b.N = b_size
+	start := time.Unix(now-step, 0)
+	end := start.Add(20 * step * time.Second)
+	for i := 0; i < b.N; i++ {
+		key := fmt.Sprintf("add%d", i)
+		if _, err = rd.Fetch(key, 0, 0, "AVERAGE", start, end, step*time.Second); err != nil {
+			b.Fatal(err)
+		}
 	}
 
 }
