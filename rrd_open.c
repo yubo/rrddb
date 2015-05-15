@@ -198,6 +198,7 @@ rrd_file_t *rrd_open( const char *const file_name, rrd_t *rrd,
 			if (db_put(r, file_name, time(NULL), file_offset, newfile_size, 
 						R_NOOVERWRITE) == -1){
 				// todo remove file from archive, empty the file_offset  header
+				reset_archive(r->arop.fd, file_offset, newfile_size);
 				ret = -RRD_ERR_OPEN_FILE;
 				goto out_free;
 			}

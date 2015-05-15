@@ -2,6 +2,8 @@
  * yubo@yubo.org
  * 2015-04-20
  */
+#define _XOPEN_SOURCE 600
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -17,6 +19,11 @@
 #include <stdio.h>
 #include <string.h>
 #include "rrd_archive.h"
+#include "rrd_tool.h"
+
+#define _DEBUG  7
+#include "debug.h"
+
 
 /* 支持本实现创建的文件 read, list, append
  * Version 7 AT&T UNIX, old-style tar archive
@@ -49,10 +56,27 @@ static intmax_t from_header(char const *where, size_t digs) {
 		}
 
 		if (overflow) {
+			dlog("overflow\n");
 			return -1;
 		}
 	}
 	return value;
+}
+
+static ssize_t read_block(int fd, block_t *b, off_t *offset){
+	ssize_t ret;
+	if((ret =  pread(fd, b->buffer, BLOCKSIZE, *offset)) > 0){
+		*offset += ret;
+	}
+	return ret;
+}
+
+static ssize_t write_block(int fd, block_t *b, off_t *offset){
+	ssize_t ret;
+	if((ret =  pwrite(fd, b->buffer, BLOCKSIZE, *offset)) > 0){
+		*offset += ret;
+	}
+	return ret;
 }
 
 
@@ -93,27 +117,56 @@ enum read_header tar_checksum (block_t *header) {
 }
 
 int tar_filesize(block_t *header){
-	if(tar_checksum(header) == HEADER_SUCCESS){
+	int  ret;
+	if((ret = tar_checksum(header)) == HEADER_SUCCESS){
 		return  from_header(header->header.size, sizeof header->header.size);
 	}
+	dlog("checksum %d\n", ret);
 	return -1;
 
 }
 
 // ugly hack
 static off_t seek_to_last(int fd){
-	return lseek(fd, -2*BLOCKSIZE, SEEK_END);
+	block_t b;
+	off_t offset, end, cur;
+
+	offset = lseek(fd, 0, SEEK_END);
+	if(offset % BLOCKSIZE)
+		return -1;
+
+	if(offset < 2*BLOCKSIZE)
+		return -1;
+
+	offset = offset - BLOCKSIZE;
+	end = max(offset - (20 * BLOCKSIZE), 0);
+	cur = offset;
+	while(end < offset){
+		read_block(fd, &b, &cur);
+		if(tar_checksum(&b) != HEADER_ZERO_BLOCK)
+			goto found;
+		offset -= BLOCKSIZE;
+		cur = offset;
+	}
+
+	// check if cur at the begin of the file
+	if(cur)
+		return -1;
+
+found:
+	return cur;
 }
 
 static off_t add_tail_archive(int fd){
 	block_t b;
 	off_t offset;
+
 	offset = lseek(fd, 0, SEEK_END);
+
 	if(offset != -1){
 		memset(&b.buffer, 0, sizeof(block_t));
-		write_block(fd, &b);
-		write_block(fd, &b);
-		lseek(fd, offset, SEEK_SET);
+		write_block(fd, &b, &offset);
+		write_block(fd, &b, &offset);
 	}
 	return offset;
 }
@@ -172,13 +225,24 @@ static void set_head(block_t *header, struct stat *stat, const char *filename){
 	snprintf(header->header.checksum, 7, "%06o", checksum);
 }
 
-int read_block(int fd, block_t *b){
-	return read(fd, b->buffer, BLOCKSIZE);
+//reset archive, should only reset last archivefile
+off_t reset_archive(int fd, off_t data_start, ssize_t len){
+	block_t b;
+	off_t offset, lastblock_start;
+
+	offset = data_start - BLOCKSIZE;
+	if(offset < 0 || offset % BLOCKSIZE){
+		return -1;
+	}
+
+	lastblock_start = BLOCK_START(offset + len);
+	memset(&b, 0, sizeof(block_t));
+	while(lastblock_start >= offset){
+		write_block(fd, &b, &offset);
+	}
+	return 0;
 }
 
-int write_block(int fd, block_t *b){
-	return write(fd, b->buffer, BLOCKSIZE);
-}
 
 // return data offset
 off_t append_archive_buff(arop_t *arop, const char *rrdname, int64_t rrdsize){
@@ -188,65 +252,71 @@ off_t append_archive_buff(arop_t *arop, const char *rrdname, int64_t rrdsize){
 	int fd = arop->fd;
 	int i;
 
-	if((offset = seek_to_last(fd)) == -1){
+	if((start = seek_to_last(fd)) == -1){
+		dlog("seek_to_last error\n");
 		return -1;
 	}
-	start = lseek(fd, 0, SEEK_CUR);
 
-	if(start % BLOCKSIZE)
-		return -1;
-
+	offset = start;
 	lastblock_start = BLOCK_START(start + rrdsize);
-	//[start, lastblock)[b][b][b]
+	//[offset, lastblock_start+BLOCKSIZE)[b][b][b]
 	len = lastblock_start - start + BLOCKSIZE;
 	//add head block and 2 zero block at end
 	len += 3*BLOCKSIZE;
 
-	if (posix_fallocate(fd, start, len)){
+	if (posix_fallocate(fd, offset, len)){
+		dlog("posix_fallocate error\n");
 		return -1;
 	}
 
-	offset = lseek(fd, start, SEEK_SET);
 	st.st_mode = 0644;
 	st.st_uid = getuid();
 	st.st_gid = getgid();
 	st.st_size = rrdsize;
 	st.st_mtime = time(NULL);
 	set_head(&b, &st, rrdname);
-	write_block(fd, &b);
+	write_block(fd, &b, &offset);
 
-	offset = lseek(fd, lastblock_start, SEEK_SET);
+	offset = lastblock_start;
 	memset(&b, 0, sizeof(block_t));
 	// empty the last block and 2 zero block at end
 	for(i = 0; i < 3; i++){
-		write_block(fd, &b);
+		write_block(fd, &b, &offset);
 	}
 	return start+BLOCKSIZE;
 }
 
 
 // todo find from front?
+// return data start offset or -1
 int append_archive(arop_t *arop, const char *filename){
 	int fd; 
 	block_t b;
 	struct stat st;
 	ssize_t ret;
+	off_t offset, start;
 
 	fd =  open(filename, O_RDONLY);
-	if(fd < 0 )
+	if(fd < 0 ){
 		return -1;
+		dlog("open() error\n");
+	}
 
 	fstat(fd, &st);
 	set_head(&b, &st, filename);
-	write_block(arop->fd, &b);
+	if((start = seek_to_last(fd)) == -1){
+		return -1;
+	}
+	offset = start;
 
-	memset(&b, 0, sizeof(block_t));
+	write_block(arop->fd, &b, &offset);
+	memset(&b, 0, BLOCKSIZE);
 	while((ret = read(fd, b.buffer, BLOCKSIZE))>0){
-		write_block(arop->fd, &b);
+		write_block(arop->fd, &b, &offset);
 		memset(&b, 0, sizeof(block_t));
 	}
 
-	return 0;
+	return start+BLOCKSIZE;
 }
 
 

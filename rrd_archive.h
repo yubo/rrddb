@@ -50,10 +50,9 @@ typedef union block {
 }block_t;
 
 
-int read_block(int fd, block_t *b);
-int write_block(int fd, block_t *b);
-int open_archive(char *filename);
-int close_archive(arop_t *arop);
+int   open_archive(char *filename);
+int   close_archive(arop_t *arop);
 off_t append_archive_buff(arop_t *arop, const char *rrdname, int64_t rrdsize);
-int append_archive(arop_t *arop, const char *filename);
+off_t reset_archive(int fd, off_t data_start, ssize_t len);
+int   append_archive(arop_t *arop, const char *filename);
 #endif
