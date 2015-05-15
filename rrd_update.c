@@ -65,9 +65,9 @@ static int gettimeofday( struct timeval *t, struct __timezone *tz) {
 /* FUNCTION PROTOTYPES */
 
 int       rrd_update_r( const char *filename, const char *tmplt,
-		int argc, const char **argv);
+		int argc, const char **argv, rrddb_t *r);
 int       _rrd_update( const char *filename, const char *tmplt,
-		int argc, const char **argv, rrd_info_t *);
+		int argc, const char **argv, rrd_info_t *, rrddb_t *r);
 
 static int allocate_data_structures( rrd_t *rrd, char ***updvals,
 		rrd_value_t **pdp_temp, const char *tmplt, long **tmpl_idx,
@@ -219,12 +219,12 @@ static void initialize_time( time_t *current_time, unsigned long *current_time_u
 #define IFDNAN(X,Y) (isnan(X) ? (Y) : (X));
 
 int rrd_update_r( const char *filename, const char *tmplt, int argc,
-		const char **argv) {
-	return _rrd_update(filename, tmplt, argc, argv, NULL);
+		const char **argv, rrddb_t *r) {
+	return _rrd_update(filename, tmplt, argc, argv, NULL, r);
 }
 
 int _rrd_update( const char *filename, const char *tmplt,
-		int argc, const char **argv, rrd_info_t * pcdp_summary) {
+		int argc, const char **argv, rrd_info_t * pcdp_summary, rrddb_t *r) {
 
 	int       arg_i = 2;
 
@@ -261,7 +261,7 @@ int _rrd_update( const char *filename, const char *tmplt,
 	}
 
 	rrd_init(&rrd);
-	if ((rrd_file = rrd_open(filename, &rrd, RRD_READWRITE, &ret, NULL)) == NULL) {
+	if ((rrd_file = rrd_open(filename, &rrd, RRD_READWRITE, &ret, r)) == NULL) {
 		goto err_free;
 	}
 	/* We are now at the beginning of the rra's */
@@ -274,10 +274,13 @@ int _rrd_update( const char *filename, const char *tmplt,
 	/* get exclusive lock to whole file.
 	 * lock gets removed when we close the file.
 	 */
+	// todo: lock this file in golang whith rwlock
+#if 0
 	if (rrd_lock(rrd_file) != 0) {
 		ret = -RRD_ERR_LOCK;
 		goto err_close;
 	}
+#endif
 
 	if ((ret = allocate_data_structures(&rrd, &updvals,
 				&pdp_temp, tmplt, &tmpl_idx, &tmpl_cnt,

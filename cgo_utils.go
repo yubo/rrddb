@@ -122,6 +122,7 @@ type Updater struct {
 	template cstring
 
 	args []unsafe.Pointer
+	rd   *Rrddb
 }
 type FetchResult struct {
 	Filename string

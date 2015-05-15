@@ -219,23 +219,23 @@ const char *rrdCreate(const char *filename, unsigned long step,
 }
 
 const char *rrdUpdate(const char *filename, const char *template, 
-		int argc, const char **argv) {
+		int argc, const char **argv, void *rd) {
 	int ret;
-	ret = rrd_update_r(filename, template, argc, argv);
+	ret = rrd_update_r(filename, template, argc, argv, (rrddb_t *)rd);
 	return rrd_strerror(ret);
 }
 
 
-const char *rrdInfo(rrd_info_t **info, char *filename) {
+const char *rrdInfo(rrd_info_t **info, char *filename, void *rd) {
 	int ret = 0;
-	*info = rrd_info_r(filename, &ret);
+	*info = rrd_info_r(filename, &ret, (rrddb_t *)rd);
 	return rrd_strerror(ret);
 }
 
 const char *rrdFetch(int *ret, char *filename, const char *cf, time_t *start, 
 		time_t *end, unsigned long *step, unsigned long *ds_cnt, 
-		char ***ds_namv, double **data) {
-	*ret = rrd_fetch_r(filename, cf, start, end, step, ds_cnt, ds_namv, data);
+		char ***ds_namv, double **data, void *rd) {
+	*ret = rrd_fetch_r(filename, cf, start, end, step, ds_cnt, ds_namv, data, (rrddb_t *)rd);
 	return rrd_strerror(*ret);
 }
 

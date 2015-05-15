@@ -128,8 +128,8 @@ func (c *Creator) Create(overwrite int) error {
 
 // Use cstring and unsafe.Pointer to avoid alocations for C calls
 
-func NewUpdater(filename string) *Updater {
-	return &Updater{filename: newCstring(filename)}
+func (r *Rrddb) NewUpdater(filename string) *Updater {
+	return &Updater{filename: newCstring(filename), rd: r}
 }
 
 func (u *Updater) SetTemplate(dsName ...string) {
@@ -181,16 +181,17 @@ func (u *Updater) update(args []unsafe.Pointer) error {
 		(*C.char)(u.template.p()),
 		C.int(len(args)),
 		(**C.char)(unsafe.Pointer(&args[0])),
+		u.rd.p,
 	)
 	return makeError(e)
 }
 
 // Info returns information about RRD file.
-func Info(filename string) (map[string]interface{}, error) {
+func (r *Rrddb) Info(filename string) (map[string]interface{}, error) {
 	fn := C.CString(filename)
 	defer freeCString(fn)
 	var i *C.rrd_info_t
-	err := makeError(C.rrdInfo(&i, fn))
+	err := makeError(C.rrdInfo(&i, fn, r.p))
 	if err != nil {
 		return nil, err
 	}
@@ -202,7 +203,7 @@ func (r *FetchResult) ValueAt(dsIndex, rowIndex int) float64 {
 }
 
 // Fetch retrieves data from RRD file.
-func Fetch(filename, cf string, start, end time.Time, step time.Duration) (FetchResult, error) {
+func (r *Rrddb) Fetch(filename, cf string, start, end time.Time, step time.Duration) (FetchResult, error) {
 	fn := C.CString(filename)
 	defer freeCString(fn)
 	cCf := C.CString(cf)
@@ -216,7 +217,7 @@ func Fetch(filename, cf string, start, end time.Time, step time.Duration) (Fetch
 		cDsNames **C.char
 		cData    *C.double
 	)
-	err := makeError(C.rrdFetch(&ret, fn, cCf, &cStart, &cEnd, &cStep, &cDsCnt, &cDsNames, &cData))
+	err := makeError(C.rrdFetch(&ret, fn, cCf, &cStart, &cEnd, &cStep, &cDsCnt, &cDsNames, &cData, r.p))
 	if err != nil {
 		return FetchResult{filename, cf, start, end, step, nil, 0, nil}, err
 	}

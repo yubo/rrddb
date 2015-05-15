@@ -587,10 +587,6 @@ void rrd_dontneed( rrd_file_t *rrd_file, rrd_t *rrd) {
 #endif                          /* without madvise and posix_fadvise it does not make much sense todo anything */
 }
 
-
-
-
-
 int rrd_close( rrd_file_t *rrd_file) {
 	rrd_simple_file_t *rrd_simple_file;
 	rrd_simple_file = (rrd_simple_file_t *)rrd_file->pvt;

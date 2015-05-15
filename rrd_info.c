@@ -13,7 +13,7 @@
 
 /* proto */
 rrd_info_t *rrd_info(int, char **);
-rrd_info_t *rrd_info_r(char *filename, int *ret_p);
+rrd_info_t *rrd_info_r(char *filename, int *ret_p, rrddb_t *r);
 
 /* allocate memory for string */
 char *sprintf_alloc(char *fmt, ...) {
@@ -78,7 +78,7 @@ rrd_info_t * rrd_info_push(rrd_info_t * info, char *key, rrd_info_type_t type,
 	return (next);
 }
 
-rrd_info_t *rrd_info_r(char *filename, int *ret_p) {
+rrd_info_t *rrd_info_r(char *filename, int *ret_p, rrddb_t *r) {
 	unsigned int i, ii = 0;
 	rrd_t     rrd;
 	rrd_info_t *data = NULL, *cd;
@@ -88,7 +88,7 @@ rrd_info_t *rrd_info_r(char *filename, int *ret_p) {
 	enum dst_en current_ds;
 
 	rrd_init(&rrd);
-	rrd_file = rrd_open(filename, &rrd, RRD_READONLY, ret_p, NULL);
+	rrd_file = rrd_open(filename, &rrd, RRD_READONLY, ret_p, r);
 	if (rrd_file == NULL)
 		goto err_free;
 

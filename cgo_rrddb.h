@@ -46,11 +46,12 @@ int db_put(void *db, const char *name, time_t ts,
 int db_delete(void *db, const char *name, unsigned int flags);
 
 extern const char *rrdCreate(const char *filename, unsigned long step, 
-		time_t start, int argc, const char **argv, void *arp, int overwrite);
+		time_t start, int argc, const char **argv, void *rd, int overwrite);
 extern const char *rrdUpdate(const char *filename, 
-		const char *template, int argc, const char **argv);
-extern const char *rrdInfo(struct rrd_info_t **ret, char *filename);
+		const char *template, int argc, const char **argv, void *rd);
+extern const char *rrdInfo(struct rrd_info_t **ret, char *filename, void *rd);
 extern const char *rrdFetch(int *ret, char *filename, const char *cf, 
-		time_t *start, time_t *end, unsigned long *step, unsigned long *ds_cnt, char ***ds_namv, double **data);
+		time_t *start, time_t *end, unsigned long *step, unsigned long *ds_cnt, 
+		char ***ds_namv, double **data, void *rd);
 extern char *arrayGetCString(char **values, int i);
 #endif

@@ -172,19 +172,22 @@ extern    "C" {
 
 	/* thread-safe (hopefully) */
 	struct rrddb_t;
-	int       rrd_create_r( const char *filename, unsigned long pdp_step, time_t last_up,
-			int argc, const char **argv, struct rrddb_t *r, int overwrite); 
-	rrd_info_t *rrd_info_r(char *, int *);
+	int       rrd_create_r( const char *filename, unsigned long pdp_step, 
+			time_t last_up, int argc, const char **argv, struct rrddb_t *r, 
+			int overwrite); 
+	rrd_info_t *rrd_info_r(char *, int *, struct rrddb_t *);
 	/* NOTE: rrd_update_r are only thread-safe if no at-style time
 	   specifications get used!!! */
 
 	int       rrd_update_r( const char *filename, const char *_template,
-			int argc, const char **argv);
-	int rrd_fetch_r ( const char *filename, const char *cf, time_t *start, time_t *end,
-			unsigned long *step, unsigned long *ds_cnt, char ***ds_namv, rrd_value_t **data);
+			int argc, const char **argv, struct rrddb_t *r);
+	int rrd_fetch_r ( const char *filename, const char *cf, time_t *start,
+			time_t *end, unsigned long *step, unsigned long *ds_cnt, 
+			char ***ds_namv, rrd_value_t **data, struct rrddb_t *r);
 	int       rrd_dump_r( const char *filename, char *outname);
 	time_t    rrd_last_r (const char *filename);
-	int rrd_lastupdate_r (const char *filename, time_t *ret_last_update, unsigned long *ret_ds_count, char ***ret_ds_names, char ***ret_last_ds);
+	int rrd_lastupdate_r (const char *filename, time_t *ret_last_update, 
+			unsigned long *ret_ds_count, char ***ret_ds_names, char ***ret_last_ds);
 	time_t    rrd_first_r( const char *filename, int rraindex);
 
 	int rrd_dump_cb_r( const char *filename, int opt_header, rrd_output_callback_t cb, void *user);

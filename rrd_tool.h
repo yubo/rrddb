@@ -77,7 +77,7 @@ extern    "C" {
 	int rrd_create_fn( const char *file_name, rrd_t *rrd, rrddb_t *r, int overwrite);
 	int rrd_fetch_fn (const char *filename, enum cf_en cf_idx, time_t *start,
 			time_t *end, unsigned long *step, unsigned long *ds_cnt,
-			char ***ds_namv, rrd_value_t **data);
+			char ***ds_namv, rrd_value_t **data, rrddb_t *r);
 
 
 #ifdef HAVE_LIBDBI
