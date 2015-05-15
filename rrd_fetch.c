@@ -70,8 +70,8 @@ int rrd_fetch_r(
 								 * will be changed to represent reality */
 		unsigned long *ds_cnt,  /* number of data sources in file */
 		char ***ds_namv,        /* names of data_sources */
-		rrd_value_t **data,
-		rrddb_t *r) {           /* two dimensional array containing the data */
+		rrd_value_t **data,     /* two dimensional array containing the data */
+		rrddb_t *r, off_t r_offset, ssize_t r_size){
 	enum cf_en cf_idx;
 
 	if ((int) (cf_idx = cf_conv(cf)) == -1) {
@@ -79,7 +79,7 @@ int rrd_fetch_r(
 	}
 
 	return (rrd_fetch_fn(filename, cf_idx, start, end, 
-				step, ds_cnt, ds_namv, data, r));
+				step, ds_cnt, ds_namv, data, r, r_offset, r_size));
 } /* int rrd_fetch_r */
 
 int rrd_fetch_fn(
@@ -92,8 +92,8 @@ int rrd_fetch_fn(
 								 * will be changed to represent reality */
 		unsigned long *ds_cnt,  /* number of data sources in file */
 		char ***ds_namv,        /* names of data_sources */
-		rrd_value_t **data,
-		rrddb_t *r){            /* two dimensional array containing the data */
+		rrd_value_t **data,     /* two dimensional array containing the data */ 
+		rrddb_t *r, off_t r_offset, ssize_t r_size){
 	long      i, ii;
 	time_t    cal_start, cal_end, rra_start_time, rra_end_time;
 	long      best_full_rra = 0, best_part_rra = 0, chosen_rra =
@@ -124,7 +124,7 @@ int rrd_fetch_fn(
 #endif
 
 	rrd_init(&rrd);
-	rrd_file = rrd_open(filename, &rrd, RRD_READONLY, &ret, r);
+	rrd_file = rrd_open(filename, &rrd, RRD_READONLY, &ret, r, r_offset, r_size);
 	if (rrd_file == NULL)
 		goto err_free;
 

@@ -590,7 +590,7 @@ int rrd_create_fn( const char *file_name, rrd_t *rrd, rrddb_t *r, int overwrite)
 	for (i = 0; i < rrd->stat_head->rra_cnt; i++)
 		unkn_cnt += rrd->stat_head->ds_cnt * rrd->rra_def[i].row_cnt;
 
-	if ((rrd_file_dn = rrd_open(file_name, rrd, rrd_flags, &ret, r)) == NULL) {
+	if ((rrd_file_dn = rrd_open(file_name, rrd, rrd_flags, &ret, r, 0, 0)) == NULL) {
 		rrd_free2(rrd);
 		return ret;
 	}
@@ -704,7 +704,7 @@ int rrd_create_fn( const char *file_name, rrd_t *rrd, rrddb_t *r, int overwrite)
 	}
 	/* flush all we don't need out of the cache */
 	rrd_init(&rrd_dn);
-	if((rrd_file_dn = rrd_open(file_name, &rrd_dn, RRD_READONLY, &ret, r)) != NULL)
+	if((rrd_file_dn = rrd_open(file_name, &rrd_dn, RRD_READONLY, &ret, r, 0, 0)) != NULL)
 	{
 		rrd_dontneed(rrd_file_dn, &rrd_dn);
 		/* rrd_free(&rrd_dn); */

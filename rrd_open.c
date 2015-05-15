@@ -21,6 +21,9 @@
 #endif
 #include "rrd_archive.h"
 
+#define _DEBUG 7
+#include "debug.h"
+
 #define MEMBLK 8192
 
 #ifdef WIN32
@@ -80,7 +83,7 @@
  */
 
 rrd_file_t *rrd_open( const char *const file_name, rrd_t *rrd, 
-		unsigned rdwr, int *ret_p, rrddb_t *r) {
+		unsigned rdwr, int *ret_p, rrddb_t *r, off_t r_offset, ssize_t r_size) {
 	unsigned long ui;
 	int       flags = 0;
 	int       version;
@@ -186,30 +189,35 @@ rrd_file_t *rrd_open( const char *const file_name, rrd_t *rrd,
 		goto out_free;
 	}
 	*/
-	if(db_get(r, file_name, &file_ts, &file_offset, &file_size, 0) == -1){
-		// not found
-		if (rdwr & RRD_CREAT){
-			//append
-			file_offset = append_archive_buff(&r->arop, file_name, newfile_size);
-			if(file_offset == -1){
-				ret = -RRD_ERR_OPEN_FILE;
-				goto out_free;
-			}
-			if (db_put(r, file_name, time(NULL), file_offset, newfile_size, 
-						R_NOOVERWRITE) == -1){
-				// todo remove file from archive, empty the file_offset  header
-				reset_archive(r->arop.fd, file_offset, newfile_size);
+	if(r_offset && r_size){
+		file_offset = r_offset;
+		file_size = r_size;
+	}else{
+		if(db_get(r, file_name, &file_ts, &file_offset, &file_size, 0) == -1){
+			// not found
+			if (rdwr & RRD_CREAT){
+				//append
+				file_offset = append_archive_buff(&r->arop, file_name, newfile_size);
+				if(file_offset == -1){
+					ret = -RRD_ERR_OPEN_FILE;
+					goto out_free;
+				}
+				if (db_put(r, file_name, time(NULL), file_offset, newfile_size, 
+							R_NOOVERWRITE) == -1){
+					// todo remove file from archive, empty the file_offset  header
+					reset_archive(r->arop.fd, file_offset, newfile_size);
+					ret = -RRD_ERR_OPEN_FILE;
+					goto out_free;
+				}
+			}else{
 				ret = -RRD_ERR_OPEN_FILE;
 				goto out_free;
 			}
 		}else{
-			ret = -RRD_ERR_OPEN_FILE;
-			goto out_free;
-		}
-	}else{
-		if ((rdwr & RRD_CREAT) && (rdwr & RRD_EXCL)) {
-			ret = -RRD_ERR_OPEN_FILE;
-			goto out_free;
+			if ((rdwr & RRD_CREAT) && (rdwr & RRD_EXCL)) {
+				ret = -RRD_ERR_OPEN_FILE;
+				goto out_free;
+			}
 		}
 	}
 	//file_offset += BLOCKSIZE;
@@ -224,7 +232,7 @@ rrd_file_t *rrd_open( const char *const file_name, rrd_t *rrd,
 		   call so the chances of a race should be minimal.    
 
 		   Maybe ask your vendor to fix your OS ... */    
-		utime(file_name,NULL);  
+		//utime(file_name,NULL);  
 	}
 #endif    
 #endif

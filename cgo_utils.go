@@ -120,9 +120,10 @@ type Creator struct {
 type Updater struct {
 	filename cstring
 	template cstring
-
-	args []unsafe.Pointer
-	rd   *Rrddb
+	offset   int64
+	size     int64
+	args     []unsafe.Pointer
+	rd       *Rrddb
 }
 type FetchResult struct {
 	Filename string
@@ -133,12 +134,6 @@ type FetchResult struct {
 	DsNames  []string
 	RowCnt   int
 	values   []float64
-}
-type Db_entry struct {
-	Key    string
-	Ts     C.time_t
-	Size   C.ssize_t
-	Offset C.off_t
 }
 
 /*
@@ -152,11 +147,6 @@ type cstring []byte
 /* function */
 func (e Error) Error() string {
 	return string(e)
-}
-
-func (e *Db_entry) String() string {
-	return fmt.Sprintf("key %s ts %d offset %d",
-		e.Key, int64(e.Ts), int64(e.Offset))
 }
 
 func newCstring(s string) cstring {
