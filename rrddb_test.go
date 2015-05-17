@@ -3,6 +3,8 @@ package rrddb
 import (
 	"fmt"
 	"os"
+	"runtime"
+	"sync"
 	"testing"
 	"time"
 )
@@ -13,14 +15,25 @@ const (
 	arname    = "/tmp/rrd.tar"
 	dbname    = "/tmp/rrd.db"
 	b_size    = 100000
+	work_size = 10
 )
+
+type db_t struct {
+	offset int64
+	size   int64
+}
 
 var rd *Rrddb
 var err error
 var now int64
+var db map[string]db_t
+var wg sync.WaitGroup
+var lock sync.RWMutex
 
 func init() {
 	now = time.Now().Unix()
+	runtime.GOMAXPROCS(runtime.NumCPU())
+	db = make(map[string]db_t)
 }
 
 func add_rrd(t *testing.T, key string) {
@@ -158,6 +171,8 @@ func testAll(t *testing.T) {
 }
 
 func add(b *testing.B, key string) {
+	lock.Lock()
+	defer lock.Unlock()
 	c := rd.NewCreator(key, time.Now(), step)
 	c.RRA("AVERAGE", 0.5, 1, 100)
 	c.RRA("AVERAGE", 0.5, 5, 100)
@@ -168,13 +183,17 @@ func add(b *testing.B, key string) {
 }
 
 func update(b *testing.B, key string) {
-	if _, offset, size, err := rd.Get(key); err != nil {
+	u := rd.NewUpdater(key, db[key].offset, db[key].size)
+	if err := u.Update(now+step, float64(1.5)); err != nil {
+		b.Fatal(err)
+	}
+}
+
+func fetch(b *testing.B, key string, start, end time.Time) {
+	if fetchRes, err := rd.Fetch(key, db[key].offset, db[key].size, "AVERAGE", start, end, step*time.Second); err != nil {
 		b.Fatal(err)
 	} else {
-		u := rd.NewUpdater(key, offset, size)
-		if err := u.Update(now+step, float64(1.5)); err != nil {
-			b.Fatal(err)
-		}
+		fetchRes.FreeValues()
 	}
 }
 
@@ -190,21 +209,50 @@ func BenchmarkAdd(b *testing.B) {
 	}
 	b.StartTimer()
 	b.N = b_size
-	for i := 0; i < b.N; i++ {
-		add(b, fmt.Sprintf("add%d", i))
+	n := b.N / work_size
+	for j := 0; j < work_size; j++ {
+		wg.Add(1)
+		go func(j int) {
+			defer wg.Done()
+			for i := 0; i < n; i++ {
+				key := fmt.Sprintf("add-%d-%d", j, i)
+				add(b, fmt.Sprintf(key))
+			}
+		}(j)
 	}
+	wg.Wait()
 }
 
 func BenchmarkUpdate(b *testing.B) {
+	b.StopTimer()
 	if rd == nil {
 		b.Fatalf("rd is nil")
 	}
 	b.N = b_size
-	for i := 0; i < b.N; i++ {
-		key := fmt.Sprintf("add%d", i)
-		update(b, key)
+	n := b.N / work_size
+	for j := 0; j < work_size; j++ {
+		for i := 0; i < n; i++ {
+			key := fmt.Sprintf("add-%d-%d", j, i)
+			if _, offset, size, err := rd.Get(key); err != nil {
+				b.Fatal(err)
+			} else {
+				db[key] = db_t{offset: offset, size: size}
+			}
+		}
 	}
+	b.StartTimer()
 
+	for j := 0; j < work_size; j++ {
+		wg.Add(1)
+		go func(j int) {
+			defer wg.Done()
+			for i := 0; i < n; i++ {
+				key := fmt.Sprintf("add-%d-%d", j, i)
+				update(b, key)
+			}
+		}(j)
+	}
+	wg.Wait()
 }
 
 func BenchmarkFetch(b *testing.B) {
@@ -212,13 +260,18 @@ func BenchmarkFetch(b *testing.B) {
 		b.Fatalf("rd is nil")
 	}
 	b.N = b_size
+	n := b.N / work_size
 	start := time.Unix(now-step, 0)
 	end := start.Add(20 * step * time.Second)
-	for i := 0; i < b.N; i++ {
-		key := fmt.Sprintf("add%d", i)
-		if _, err = rd.Fetch(key, 0, 0, "AVERAGE", start, end, step*time.Second); err != nil {
-			b.Fatal(err)
-		}
+	for j := 0; j < work_size; j++ {
+		wg.Add(1)
+		go func(j int) {
+			defer wg.Done()
+			for i := 0; i < n; i++ {
+				key := fmt.Sprintf("add-%d-%d", j, i)
+				fetch(b, key, start, end)
+			}
+		}(j)
 	}
-
+	wg.Wait()
 }
