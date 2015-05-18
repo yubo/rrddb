@@ -155,6 +155,25 @@ int rrddb_close(void *d) {
 	}
 }
 
+int rrddb_append_file(void *r, const char *filename, const char *key){
+	int ret;
+	time_t ts;
+	off_t offset;
+	ssize_t size;
+	rrddb_t *rd = (rrddb_t *)r;
+
+	ret = append_archive(&rd->arop, filename, key, &ts, &offset, &size);
+	if(ret == -1){
+		return -1;
+	}
+	if (db_put(r, key, ts, offset, size, R_NOOVERWRITE) == -1){
+		// todo remove file from archive, empty the file_offset  header
+		reset_archive(rd->arop.fd, offset, size);
+		return -1;
+	}
+	return 0;
+}
+
 int db_get(void *r, const char *name, time_t *ts, off_t *offset, 
 		ssize_t *size, unsigned int flags){
 	DBT key, data;

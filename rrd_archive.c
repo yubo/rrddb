@@ -289,8 +289,9 @@ off_t append_archive_buff(arop_t *arop, const char *rrdname, int64_t rrdsize){
 
 // todo find from front?
 // return data start offset or -1
-int append_archive(arop_t *arop, const char *filename){
-	int fd; 
+off_t  append_archive(arop_t *arop, const char *filename, const char *key,
+		time_t *tsp,  off_t *offsetp, ssize_t *sizep){
+	int fd, i; 
 	block_t b;
 	struct stat st;
 	ssize_t ret;
@@ -299,7 +300,6 @@ int append_archive(arop_t *arop, const char *filename){
 	fd =  open(filename, O_RDONLY);
 	if(fd < 0 ){
 		return -1;
-		dlog("open() error\n");
 	}
 
 	fstat(fd, &st);
@@ -315,7 +315,13 @@ int append_archive(arop_t *arop, const char *filename){
 		write_block(arop->fd, &b, &offset);
 		memset(&b, 0, sizeof(block_t));
 	}
-
+	// empty 2 zero block at end
+	for(i = 0; i < 2; i++){
+		write_block(arop->fd, &b, &offset);
+	}
+	*tsp = st.st_mtime;
+	*offsetp = start+BLOCKSIZE;
+	*sizep = st.st_size;
 	return start+BLOCKSIZE;
 }
 

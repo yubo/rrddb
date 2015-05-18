@@ -54,5 +54,6 @@ int   open_archive(char *filename);
 int   close_archive(arop_t *arop);
 off_t append_archive_buff(arop_t *arop, const char *rrdname, int64_t rrdsize);
 off_t reset_archive(int fd, off_t data_start, ssize_t len);
-int   append_archive(arop_t *arop, const char *filename);
+off_t  append_archive(arop_t *arop, const char *filename, const char *key,
+		time_t *mtime,  off_t *offset, ssize_t *size);
 #endif

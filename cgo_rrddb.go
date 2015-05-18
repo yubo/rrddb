@@ -53,6 +53,19 @@ func (d *Rrddb) close() error {
 	return fmt.Errorf("db_close error")
 }
 
+func (r *Rrddb) Append_file(filename, key string) error {
+	_filename := C.CString(filename)
+	defer C.free(unsafe.Pointer(_filename))
+	_key := C.CString(key)
+	defer C.free(unsafe.Pointer(_key))
+
+	ret := C.rrddb_append_file(r.p, _filename, _key)
+	if ret == 0 {
+		return nil
+	}
+	return fmt.Errorf("append_file error")
+}
+
 func (r *Rrddb) Get(key string) (int64, int64, int64, error) {
 	var ts C.time_t
 	var offset C.off_t
