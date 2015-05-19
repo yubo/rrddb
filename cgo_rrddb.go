@@ -17,9 +17,22 @@ import (
 	"unsafe"
 )
 
+func Open(arname, dbname string) (*Rrddb, error) {
+	var rd *Rrddb
+	var err error
+
+	if rd, err = open(arname, dbname, "hash", "", 0); err != nil {
+		return nil, err
+	}
+
+	return rd, nil
+}
+
 func open(arname, dbname, dbtype, dbinfo string, dblock int) (*Rrddb, error) {
 	var null unsafe.Pointer
 	d := &Rrddb{
+		Db:     true,
+		Ar:     true,
 		arname: arname,
 		dbname: dbname,
 		dbtype: dbtype,
@@ -45,12 +58,49 @@ func open(arname, dbname, dbtype, dbinfo string, dblock int) (*Rrddb, error) {
 	return d, nil
 }
 
-func (d *Rrddb) close() error {
-	ret := C.rrddb_close(d.p)
-	if ret == 0 {
-		return nil
+func (d *Rrddb) Close_db() error {
+	if d.Db {
+		d.Db = false
+		return int2Error(C.rrddb_close_db(d.p))
+	} else {
+		return fmt.Errorf("Idx file has been closed")
 	}
-	return fmt.Errorf("db_close error")
+}
+
+func (d *Rrddb) Close_archive() error {
+	if d.Ar {
+		d.Ar = false
+		return int2Error(C.rrddb_close_archive(d.p))
+	} else {
+		return fmt.Errorf("Archive file has been closed")
+	}
+}
+
+func (d *Rrddb) Clean() error {
+	var null unsafe.Pointer
+	if d.p != null {
+		C.free(d.p)
+		d.p = null
+		return nil
+	} else {
+		return fmt.Errorf("Rrddb has been cleaned")
+	}
+}
+
+func (d *Rrddb) Close() error {
+	var null unsafe.Pointer
+	if d.p != null {
+		err1 := d.Close_db()
+		err2 := d.Close_archive()
+		err3 := d.Clean()
+		if err1 != nil || err2 != nil || err3 != nil {
+			return fmt.Errorf("%s %s %s", err1, err2, err3)
+		} else {
+			return nil
+		}
+	} else {
+		return fmt.Errorf("Rrddb has been closed")
+	}
 }
 
 func (r *Rrddb) Append_file(filename, key string) error {
@@ -59,11 +109,7 @@ func (r *Rrddb) Append_file(filename, key string) error {
 	_key := C.CString(key)
 	defer C.free(unsafe.Pointer(_key))
 
-	ret := C.rrddb_append_file(r.p, _filename, _key)
-	if ret == 0 {
-		return nil
-	}
-	return fmt.Errorf("append_file error")
+	return int2Error(C.rrddb_append_file(r.p, _filename, _key))
 }
 
 func (r *Rrddb) Get(key string) (int64, int64, int64, error) {
@@ -73,44 +119,32 @@ func (r *Rrddb) Get(key string) (int64, int64, int64, error) {
 	_key := C.CString(key)
 	defer C.free(unsafe.Pointer(_key))
 
-	ret := C.db_get(r.p, _key, &ts, &offset, &size, 0)
-	if ret == 0 {
+	if err := int2Error(C.db_get(r.p, _key, &ts, &offset, &size, 0)); err != nil {
+		return 0, 0, 0, err
+	} else {
 		return int64(ts), int64(offset), int64(size), nil
 	}
-	return 0, 0, 0, fmt.Errorf("db_get error")
 }
 
 func (r *Rrddb) Put(key string, ts, offset, size int64) error {
 	_key := C.CString(key)
 	defer C.free(unsafe.Pointer(_key))
 
-	ret := C.db_put(r.p, _key, C.time_t(ts), C.off_t(offset), C.ssize_t(size), R_NOOVERWRITE)
-	if ret == 0 {
-		return nil
-	}
-	return fmt.Errorf("db_put error, maybe the key still exist")
+	return int2Error(C.db_put(r.p, _key, C.time_t(ts), C.off_t(offset), C.ssize_t(size), R_NOOVERWRITE))
 }
 
 func (r *Rrddb) Update(key string, ts, offset, size int64) error {
 	_key := C.CString(key)
 	defer C.free(unsafe.Pointer(_key))
 
-	ret := C.db_put(r.p, _key, C.time_t(ts), C.off_t(offset), C.ssize_t(size), 0)
-	if ret == 0 {
-		return nil
-	}
-	return fmt.Errorf("db_update error")
+	return int2Error(C.db_put(r.p, _key, C.time_t(ts), C.off_t(offset), C.ssize_t(size), 0))
 }
 
 func (r *Rrddb) Delete(key string) error {
 	_key := C.CString(key)
 	defer C.free(unsafe.Pointer(_key))
 
-	ret := C.db_delete(r.p, _key, 0)
-	if ret == 0 {
-		return nil
-	}
-	return fmt.Errorf("db_delete error")
+	return int2Error(C.db_delete(r.p, _key, 0))
 }
 
 // NewCreator returns new Creator object. You need to call Create to really

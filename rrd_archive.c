@@ -201,7 +201,13 @@ out:
 }
 
 int close_archive(arop_t *arop){
-	return close(arop->fd);
+	int ret;
+	if(arop->fd >= 0){
+		ret = close(arop->fd);
+		arop->fd = -1;
+		return ret;
+	}
+	return -1;
 }
 
 static void set_head(block_t *header, struct stat *stat, const char *filename){
@@ -303,8 +309,8 @@ off_t  append_archive(arop_t *arop, const char *filename, const char *key,
 	}
 
 	fstat(fd, &st);
-	set_head(&b, &st, filename);
-	if((start = seek_to_last(fd)) == -1){
+	set_head(&b, &st, key);
+	if((start = seek_to_last(arop->fd)) == -1){
 		return -1;
 	}
 	offset = start;

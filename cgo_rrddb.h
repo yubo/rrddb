@@ -38,7 +38,8 @@ typedef struct rrddb_t{
 struct rrd_info_t;
 void * rrddb_open(char *arname, char *dbname, char *dtype, char *dinf, 
 		int dlock);
-int rrddb_close(void *rrddb);
+int rrddb_close_db(void *rrddb);
+int rrddb_close_archive(void *rrddb);
 int rrddb_append_file(void *r, const char *filename, const char *key);
 int db_get(void *db, const char *name, time_t *ts, 
 		off_t *offset, ssize_t *size, unsigned int flags);

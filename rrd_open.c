@@ -193,29 +193,35 @@ rrd_file_t *rrd_open( const char *const file_name, rrd_t *rrd,
 		file_offset = r_offset;
 		file_size = r_size;
 	}else{
-		if(db_get(r, file_name, &file_ts, &file_offset, &file_size, 0) == -1){
+		if((ret = db_get(r, file_name, &file_ts, &file_offset, &file_size, 0)) == -1){
+			ret =  -RRD_ERR_DB_GET;
+			goto out_free;
+		}else if (ret != 0){
+			printf("!!!!!!!!ret: %d\n", ret);
 			// not found
+			ret = 0;
 			if (rdwr & RRD_CREAT){
 				//append
 				file_offset = append_archive_buff(&r->arop, file_name, newfile_size);
 				if(file_offset == -1){
-					ret = -RRD_ERR_OPEN_FILE;
+					ret = -RRD_ERR_OPEN_FILE1;
 					goto out_free;
 				}
 				if (db_put(r, file_name, time(NULL), file_offset, newfile_size, 
 							R_NOOVERWRITE) == -1){
 					// todo remove file from archive, empty the file_offset  header
 					reset_archive(r->arop.fd, file_offset, newfile_size);
-					ret = -RRD_ERR_OPEN_FILE;
+					ret = -RRD_ERR_OPEN_FILE2;
 					goto out_free;
 				}
 			}else{
-				ret = -RRD_ERR_OPEN_FILE;
+				ret = -RRD_ERR_OPEN_FILE3;
 				goto out_free;
 			}
 		}else{
+			printf("!!!!!!!!ret: %d filename %s, ts:%lx, offset:%lx, size:%lx\n", ret, file_name, file_ts, file_offset, file_size);
 			if ((rdwr & RRD_CREAT) && (rdwr & RRD_EXCL)) {
-				ret = -RRD_ERR_OPEN_FILE;
+				ret = -RRD_ERR_OPEN_FILE4;
 				goto out_free;
 			}
 		}

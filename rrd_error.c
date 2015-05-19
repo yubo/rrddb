@@ -98,6 +98,10 @@ char const *rrd_err_text[RRD_ERR_NUM] = {
 	"allocating rrd_simple_file for 'xxx'", /* RRD_ERR_MALLOC8 */
 	"in read/write request mask", /* RRD_ERR_IO1 */
 	"opening error", /* RRD_ERR_OPEN_FILE */
+	"rrd_open create append_archive_buff error", /* RRD_ERR_OPEN_FILE1 */
+	"rrd_open append_archive_buff() ok but db_put() error", /* RRD_ERR_OPEN_FILE2 */
+	"rrd_open file not found by db_get()", /* RRD_ERR_OPEN_FILE3 */
+	"rrd_open file has been created, and can't overwrite ", /* RRD_ERR_OPEN_FILE4 */
 	"fstat error", /* RRD_ERR_STAT_FILE */
 	"write error", /* RRD_ERR_WRITE5 */
 	"mmap error", /* RRD_ERR_MMAP */
@@ -161,6 +165,16 @@ char const *rrd_err_text[RRD_ERR_NUM] = {
 	"unknown data acquisition function ' ?? '", /* RRD_ERR_UNKNOWN_DATA */
 	"update_cdp_prep error", /* RRD_ERR_UPDATE_CDP */
 	"variable ' ?? ' not found", /* RRD_ERR_UNKNOWN_DATA1 */
+	"close_archive error and close_db error", /* RRD_ERR_CLOSE1 */
+	"close_archive error", /* RRD_ERR_CLOSE2 */
+	"close_db error", /* RRD_ERR_CLOSE3 */
+	"append file to archive error", /* RRD_ERR_APPEND */
+	"db_get error(out of memory)", /* RRD_ERR_DB_GET */
+	"db_get key not found", /* RRD_ERR_DB_GET1 */
+	"db_put error", /* RRD_ERR_DB_PUT */
+	"db_put strlen(key)==0", /* RRD_ERR_DB_KEY */
+	"db_put strlen(key)>MAXKEYLEN", /* RRD_ERR_DB_KEY1 */
+	"db_del error", /* RRD_ERR_DB_DEL */
 };
 
 

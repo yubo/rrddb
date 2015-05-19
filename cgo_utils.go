@@ -102,6 +102,9 @@ var (
 type Error string
 
 type Rrddb struct {
+	sync.RWMutex
+	Db     bool
+	Ar     bool
 	arname string
 	dbname string
 	dbtype string
@@ -210,6 +213,10 @@ func makeError(e *C.char) error {
 		return nil
 	}
 	return Error(C.GoString(e))
+}
+
+func int2Error(e C.int) error {
+	return makeError(C.rrd_strerror(e))
 }
 
 func ftoa(f float64) string {

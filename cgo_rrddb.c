@@ -12,6 +12,7 @@
 #include <fcntl.h>
 
 #include "rrd.h"
+#include "rrd_error.h"
 #include "rrd_archive.h"
 #include "cgo_rrddb.h"
 
@@ -142,16 +143,25 @@ err_alloced:
 	return NULL;
 }
 
-int rrddb_close(void *d) {
-	int ret = 0;
-
+int rrddb_close_archive(void *d) {
 	rrddb_t *rd = (rrddb_t *)d;
-	ret |= rd->dbop.db->close(rd->dbop.db);
-	ret |= close_archive(&rd->arop);
-	if(ret){
-		return -1;
-	}else{
+	if (close_archive(&rd->arop))
+		return -RRD_ERR_CLOSE2;
+	return 0;
+}
+
+int rrddb_close_db(void *d) {
+	int ret;
+	rrddb_t *rd = (rrddb_t *)d;
+	if(rd->dbop.db){
+		if(rd->dbop.db->close(rd->dbop.db)){
+			rd->dbop.db = NULL; // ??
+			return -RRD_ERR_CLOSE3;
+		}
+		rd->dbop.db = NULL;
 		return 0;
+	}else{
+		return -RRD_ERR_CLOSE3;
 	}
 }
 
@@ -164,12 +174,12 @@ int rrddb_append_file(void *r, const char *filename, const char *key){
 
 	ret = append_archive(&rd->arop, filename, key, &ts, &offset, &size);
 	if(ret == -1){
-		return -1;
+		return -RRD_ERR_APPEND;
 	}
-	if (db_put(r, key, ts, offset, size, R_NOOVERWRITE) == -1){
+	if ((ret = db_put(r, key, ts, offset, size, R_NOOVERWRITE))){
 		// todo remove file from archive, empty the file_offset  header
 		reset_archive(rd->arop.fd, offset, size);
-		return -1;
+		return ret;
 	}
 	return 0;
 }
@@ -185,7 +195,7 @@ int db_get(void *r, const char *name, time_t *ts, off_t *offset,
 
 	ret = db->get(db, &key, &data, flags);
 	if(ret){
-		return -1;
+		return ret;
 	}else{
 		*ts = ((db_entry_t *)(data.data))->ts;
 		*offset = ((db_entry_t *)(data.data))->offset;
@@ -203,9 +213,9 @@ int db_put(void *r, const char *name, time_t ts, off_t offset,
 
 	db = ((rrddb_t *)r)->dbop.db;
 	if (!(len = strlen(name)))
-		return -1;
+		return -RRD_ERR_DB_KEY;
 	if (len > MAXKEYLEN)
-		return -1;
+		return -RRD_ERR_DB_KEY1;
 	key.data = (char *)name;
 	key.size = len+1;
 	e.ts = ts;
@@ -214,7 +224,10 @@ int db_put(void *r, const char *name, time_t ts, off_t offset,
 	dat.data = &e;
 	dat.size = sizeof(e);
 
-	return db->put(db, &key, &dat, flags);
+	if(db->put(db, &key, &dat, flags)){
+		return -RRD_ERR_DB_PUT;
+	}
+	return 0;
 }
 
 int db_delete(void *d, const char *name, unsigned int flags) {
@@ -225,7 +238,10 @@ int db_delete(void *d, const char *name, unsigned int flags) {
 
 	key.data = (char *)name;
 	key.size = strlen(name)+1;
-	return db->del(db, &key, flags);
+	if(db->del(db, &key, flags)){
+		return -RRD_ERR_DB_DEL;
+	}
+	return 0;
 }
 
 

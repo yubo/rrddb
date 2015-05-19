@@ -3,7 +3,6 @@ package rrddb
 import (
 	"fmt"
 	"os"
-	"runtime"
 	"sync"
 	"testing"
 	"time"
@@ -32,7 +31,7 @@ var lock sync.RWMutex
 
 func init() {
 	now = time.Now().Unix()
-	runtime.GOMAXPROCS(runtime.NumCPU())
+	//runtime.GOMAXPROCS(runtime.NumCPU())
 	db = make(map[string]db_t)
 }
 
@@ -149,7 +148,7 @@ func test_offset(t *testing.T) {
 	}
 }
 
-func testAll(t *testing.T) {
+func TestAll(t *testing.T) {
 
 	os.Remove(arname)
 	os.Remove(dbname)
@@ -165,6 +164,8 @@ func testAll(t *testing.T) {
 	test_update(t, "test")
 	inf := test_info(t, "test")
 	test_fetch(t, "test", inf)
+
+	rd.Append_file("./rrddb_test.go", "rrddb_test.go")
 
 	test_db(t)
 
