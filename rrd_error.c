@@ -167,7 +167,7 @@ char const *rrd_err_text[RRD_ERR_NUM] = {
 	"variable ' ?? ' not found", /* RRD_ERR_UNKNOWN_DATA1 */
 	"close_archive error and close_db error", /* RRD_ERR_CLOSE1 */
 	"close_archive error", /* RRD_ERR_CLOSE2 */
-	"close_db error", /* RRD_ERR_CLOSE3 */
+	"close_db cannot close(fd == NULL) error", /* RRD_ERR_CLOSE3 */
 	"append file to archive error", /* RRD_ERR_APPEND */
 	"db_get error(out of memory)", /* RRD_ERR_DB_GET */
 	"db_get key not found", /* RRD_ERR_DB_GET1 */
@@ -176,6 +176,8 @@ char const *rrd_err_text[RRD_ERR_NUM] = {
 	"db_put strlen(key)==0", /* RRD_ERR_DB_KEY */
 	"db_put strlen(key)>MAXKEYLEN", /* RRD_ERR_DB_KEY1 */
 	"db_del error", /* RRD_ERR_DB_DEL */
+	"db_sync error", /* RRD_ERR_DB_SYNC */
+	"db_sync cannot sync ( fd == NULL )", /* RRD_ERR_DB_SYNC1 */
 };
 
 

@@ -58,6 +58,21 @@ func open(arname, dbname, dbtype, dbinfo string, dblock int) (*Rrddb, error) {
 	return d, nil
 }
 
+func (r *Rrddb) sync_db() error {
+	if r.Db {
+		r.Db = false
+		return int2Error(C.rrddb_sync_db(r.p))
+	} else {
+		return fmt.Errorf("Idx file has been closed")
+	}
+}
+
+func (r *Rrddb) Sync_db() error {
+	r.Lock()
+	defer r.Unlock()
+	return r.sync_db()
+}
+
 func (r *Rrddb) close_db() error {
 	if r.Db {
 		r.Db = false

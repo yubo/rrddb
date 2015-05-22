@@ -150,6 +150,19 @@ int rrddb_close_archive(void *d) {
 	return 0;
 }
 
+int rrddb_sync_db(void *d) {
+	int ret;
+	rrddb_t *rd = (rrddb_t *)d;
+	if(rd->dbop.db){
+		if(rd->dbop.db->sync(rd->dbop.db, 0)){
+			return -RRD_ERR_DB_SYNC;
+		}
+		return 0;
+	}else{
+		return -RRD_ERR_DB_SYNC1;
+	}
+}
+
 int rrddb_close_db(void *d) {
 	int ret;
 	rrddb_t *rd = (rrddb_t *)d;
