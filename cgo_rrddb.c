@@ -207,7 +207,7 @@ int db_get(void *r, const char *name, time_t *ts, off_t *offset,
 int db_put(void *r, const char *name, time_t ts, off_t offset, 
 		ssize_t size, unsigned int flags){
 	DBT key, dat;
-	int len;
+	int len, ret;
 	db_entry_t e;
 	DB *db;
 
@@ -224,8 +224,11 @@ int db_put(void *r, const char *name, time_t ts, off_t offset,
 	dat.data = &e;
 	dat.size = sizeof(e);
 
-	if(db->put(db, &key, &dat, flags)){
+	ret = db->put(db, &key, &dat, flags);
+	if(ret == 1){
 		return -RRD_ERR_DB_PUT;
+	}else if(ret){
+		return -RRD_ERR_DB_PUT1;
 	}
 	return 0;
 }
