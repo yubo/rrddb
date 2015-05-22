@@ -132,9 +132,10 @@
 #define RRD_ERR_DB_GET                           0x0282
 #define RRD_ERR_DB_GET1                          0x0283
 #define RRD_ERR_DB_PUT                           0x0284
-#define RRD_ERR_DB_KEY                           0x0285
-#define RRD_ERR_DB_KEY1                          0x0286
-#define RRD_ERR_DB_DEL                           0x0287
+#define RRD_ERR_DB_PUT1                          0x0285
+#define RRD_ERR_DB_KEY                           0x0286
+#define RRD_ERR_DB_KEY1                          0x0287
+#define RRD_ERR_DB_DEL                           0x0288
 /* if add new system event flag, please upadte the RRD_ERR_END */
-#define RRD_ERR_END                              0x0287
+#define RRD_ERR_END                              0x0288
 #define RRD_ERR_NUM                              (RRD_ERR_END - RRD_ERR_START + 1)

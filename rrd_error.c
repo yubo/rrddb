@@ -171,7 +171,8 @@ char const *rrd_err_text[RRD_ERR_NUM] = {
 	"append file to archive error", /* RRD_ERR_APPEND */
 	"db_get error(out of memory)", /* RRD_ERR_DB_GET */
 	"db_get key not found", /* RRD_ERR_DB_GET1 */
-	"db_put error", /* RRD_ERR_DB_PUT */
+	"db_put error(key has been existed)", /* RRD_ERR_DB_PUT */
+	"db_put error", /* RRD_ERR_DB_PUT1 */
 	"db_put strlen(key)==0", /* RRD_ERR_DB_KEY */
 	"db_put strlen(key)>MAXKEYLEN", /* RRD_ERR_DB_KEY1 */
 	"db_del error", /* RRD_ERR_DB_DEL */

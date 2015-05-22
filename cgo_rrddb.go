@@ -58,41 +58,63 @@ func open(arname, dbname, dbtype, dbinfo string, dblock int) (*Rrddb, error) {
 	return d, nil
 }
 
-func (d *Rrddb) Close_db() error {
-	if d.Db {
-		d.Db = false
-		return int2Error(C.rrddb_close_db(d.p))
+func (r *Rrddb) close_db() error {
+	if r.Db {
+		r.Db = false
+		return int2Error(C.rrddb_close_db(r.p))
 	} else {
 		return fmt.Errorf("Idx file has been closed")
 	}
 }
 
-func (d *Rrddb) Close_archive() error {
-	if d.Ar {
-		d.Ar = false
-		return int2Error(C.rrddb_close_archive(d.p))
+func (r *Rrddb) Close_db() error {
+	r.Lock()
+	defer r.Unlock()
+	return r.close_db()
+}
+
+func (r *Rrddb) close_archive() error {
+	if r.Ar {
+		r.Ar = false
+		return int2Error(C.rrddb_close_archive(r.p))
 	} else {
 		return fmt.Errorf("Archive file has been closed")
 	}
 }
 
-func (d *Rrddb) Clean() error {
+func (r *Rrddb) Close_archive() error {
+	r.Lock()
+	defer r.Unlock()
+	return r.close_archive()
+}
+
+func (r *Rrddb) clean() error {
 	var null unsafe.Pointer
-	if d.p != null {
-		C.free(d.p)
-		d.p = null
+
+	if r.p != null {
+		C.free(r.p)
+		r.p = null
 		return nil
 	} else {
 		return fmt.Errorf("Rrddb has been cleaned")
 	}
 }
 
-func (d *Rrddb) Close() error {
+func (r *Rrddb) Clean() error {
+	r.Lock()
+	defer r.Unlock()
+	return r.clean()
+}
+
+func (r *Rrddb) Close() error {
 	var null unsafe.Pointer
-	if d.p != null {
-		err1 := d.Close_db()
-		err2 := d.Close_archive()
-		err3 := d.Clean()
+
+	r.Lock()
+	defer r.Unlock()
+	if r.p != null {
+		err1 := r.close_db()
+		err2 := r.close_archive()
+		err3 := r.clean()
 		if err1 != nil || err2 != nil || err3 != nil {
 			return fmt.Errorf("%s %s %s", err1, err2, err3)
 		} else {
@@ -108,6 +130,8 @@ func (r *Rrddb) Append_file(filename, key string) error {
 	defer C.free(unsafe.Pointer(_filename))
 	_key := C.CString(key)
 	defer C.free(unsafe.Pointer(_key))
+	d.Lock()
+	defer d.Unlock()
 
 	return int2Error(C.rrddb_append_file(r.p, _filename, _key))
 }
@@ -118,6 +142,8 @@ func (r *Rrddb) Get(key string) (int64, int64, int64, error) {
 	var size C.ssize_t
 	_key := C.CString(key)
 	defer C.free(unsafe.Pointer(_key))
+	r.RLock()
+	defer r.RUnlock()
 
 	if err := int2Error(C.db_get(r.p, _key, &ts, &offset, &size, 0)); err != nil {
 		return 0, 0, 0, err
@@ -129,6 +155,8 @@ func (r *Rrddb) Get(key string) (int64, int64, int64, error) {
 func (r *Rrddb) Put(key string, ts, offset, size int64) error {
 	_key := C.CString(key)
 	defer C.free(unsafe.Pointer(_key))
+	d.Lock()
+	defer d.Unlock()
 
 	return int2Error(C.db_put(r.p, _key, C.time_t(ts), C.off_t(offset), C.ssize_t(size), R_NOOVERWRITE))
 }
@@ -136,6 +164,8 @@ func (r *Rrddb) Put(key string, ts, offset, size int64) error {
 func (r *Rrddb) Update(key string, ts, offset, size int64) error {
 	_key := C.CString(key)
 	defer C.free(unsafe.Pointer(_key))
+	d.Lock()
+	defer d.Unlock()
 
 	return int2Error(C.db_put(r.p, _key, C.time_t(ts), C.off_t(offset), C.ssize_t(size), 0))
 }
@@ -143,6 +173,8 @@ func (r *Rrddb) Update(key string, ts, offset, size int64) error {
 func (r *Rrddb) Delete(key string) error {
 	_key := C.CString(key)
 	defer C.free(unsafe.Pointer(_key))
+	d.Lock()
+	defer d.Unlock()
 
 	return int2Error(C.db_delete(r.p, _key, 0))
 }
@@ -171,8 +203,10 @@ func (c *Creator) RRA(cf string, args ...interface{}) {
 
 // Create creates new database file. If overwrite is true it overwrites
 // database file if exists. If overwrite is false it returns error if file
-// exists (you can use os.IsExist function to check this case).
+// exists
 func (c *Creator) Create(overwrite int) error {
+	d.Lock()
+	defer d.Unlock()
 	return c.create(overwrite)
 }
 
@@ -245,9 +279,10 @@ func (u *Updater) update(args []unsafe.Pointer) error {
 
 // Info returns information about RRD file.
 func (r *Rrddb) Info(filename string, offset, size int64) (map[string]interface{}, error) {
+	var i *C.rrd_info_t
 	fn := C.CString(filename)
 	defer freeCString(fn)
-	var i *C.rrd_info_t
+
 	err := makeError(C.rrdInfo(&i, fn, r.p, C.off_t(offset), C.ssize_t(size)))
 	if err != nil {
 		return nil, err
