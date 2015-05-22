@@ -181,6 +181,8 @@ func (r *Rrddb) Update(key string, ts, offset, size int64) error {
 	defer C.free(unsafe.Pointer(_key))
 	r.Lock()
 	defer r.Unlock()
+	d.Lock()
+	defer d.Unlock()
 
 	return int2Error(C.db_put(r.p, _key, C.time_t(ts), C.off_t(offset), C.ssize_t(size), 0))
 }
