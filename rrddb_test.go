@@ -41,8 +41,6 @@ func add_rrd(t *testing.T, key string) {
 	c.RRA("AVERAGE", 0.5, 1, 100)
 	c.RRA("AVERAGE", 0.5, 5, 100)
 	c.DS("g", "GAUGE", heartbeat, 0, 60)
-	rd.Lock()
-	defer rd.Unlock()
 	if err = c.Create(0); err != nil {
 		t.Fatal(err)
 	}

@@ -125,7 +125,7 @@ type Updater struct {
 	template cstring
 	offset   int64
 	size     int64
-	args     []unsafe.Pointer
+	args     []string
 	rd       *Rrddb
 }
 type FetchResult struct {
